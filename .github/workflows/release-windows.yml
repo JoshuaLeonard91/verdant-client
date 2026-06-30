@@ -124,9 +124,10 @@ jobs:
           if (-not $iscc -and -not (Test-Path -LiteralPath $defaultIscc)) {
             choco install InnoSetup --version=6.7.1 -y --no-progress
           }
-          $isccPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
-          if (-not $isccPath -and (Test-Path -LiteralPath $defaultIscc)) {
+          if (Test-Path -LiteralPath $defaultIscc) {
             $isccPath = $defaultIscc
+          } else {
+            $isccPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
           }
           if (-not $isccPath) {
             throw "ISCC.exe was not found after installing Inno Setup."
