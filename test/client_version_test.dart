@@ -3,6 +3,7 @@ import 'package:verdant_flutter/app/client_version.dart';
 
 void main() {
   test('client version is semver and used in the Flutter user agent', () {
+    expect(verdantClientVersion, '0.1.0');
     expect(verdantClientVersion, matches(RegExp(r'^\d+\.\d+\.\d+$')));
     expect(
       verdantFlutterUserAgent,

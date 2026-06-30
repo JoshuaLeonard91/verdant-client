@@ -182,7 +182,7 @@ jobs:
           "checksums=$(Join-Path $artifactDir 'SHA256SUMS')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Attest Windows archive
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373
         with:
           subject-path: ${{ steps.package.outputs.archive }}
 
