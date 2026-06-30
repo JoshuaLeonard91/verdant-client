@@ -1,2 +1,2 @@
-const verdantClientVersion = '0.0.373';
+const verdantClientVersion = '0.1.0';
 const verdantFlutterUserAgent = 'VerdantFlutter/$verdantClientVersion';
