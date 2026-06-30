@@ -118,6 +118,7 @@ jobs:
 
       - name: Build Flutter Windows release
         env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
           VERDANT_OFFICIAL_CERT_SHA256_PINS: ${{ secrets.VERDANT_OFFICIAL_CERT_SHA256_PINS || vars.VERDANT_OFFICIAL_CERT_SHA256_PINS }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         shell: pwsh
