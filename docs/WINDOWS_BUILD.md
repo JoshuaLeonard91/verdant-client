@@ -71,14 +71,15 @@ The release wrapper keeps the Flutter version aligned with the desktop client
 release version in the private monorepo. In the standalone public Flutter repo,
 it validates `pubspec.yaml` against `lib/app/client_version.dart` directly.
 For local diagnostics it can run the certificate-pinned release build and create
-a versioned archive. Signed public releases should be produced by the GitHub
+a versioned installer. Signed public releases should be produced by the GitHub
 Actions workflow.
 
 Public GitHub release automation should use the `signed-windows-release`
 environment and GitHub OIDC instead of a checked-in or repo-level secret.
 That public workflow signs the built `verdant_flutter.exe` with Azure Artifact
-Signing before packaging the release archive and publishes the archive,
-`SHA256SUMS`, and GitHub artifact attestation to the tag's GitHub Release.
+Signing before packaging the release installer, then signs the installer and
+publishes the installer, `SHA256SUMS`, and GitHub artifact attestation to the
+tag's GitHub Release.
 
 Release builds fail if no configured pin is available from environment or local
 env files. Use `-NoCertificatePin` only for non-release local diagnostics.

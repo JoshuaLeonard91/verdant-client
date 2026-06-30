@@ -116,6 +116,27 @@ jobs:
             choco install nuget.commandline -y --no-progress
           }
 
+      - name: Ensure Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          $defaultIscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not $iscc -and -not (Test-Path -LiteralPath $defaultIscc)) {
+            choco install InnoSetup --version=6.7.1 -y --no-progress
+          }
+          $isccPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $isccPath -and (Test-Path -LiteralPath $defaultIscc)) {
+            $isccPath = $defaultIscc
+          }
+          if (-not $isccPath) {
+            throw "ISCC.exe was not found after installing Inno Setup."
+          }
+          $productVersion = (Get-Item -LiteralPath $isccPath).VersionInfo.ProductVersion
+          if ($productVersion -notlike "6.7.1*") {
+            throw "Unexpected Inno Setup version at $isccPath`: $productVersion"
+          }
+          Write-Host "Using Inno Setup compiler $productVersion at $isccPath"
+
       - name: Build Flutter Windows release
         env:
           CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
@@ -162,7 +183,7 @@ jobs:
             throw "Authenticode timestamp countersignature is missing."
           }
 
-      - name: Package Windows release
+      - name: Package Windows installer
         id: package
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
@@ -171,21 +192,62 @@ jobs:
           $releaseDir = Join-Path $env:GITHUB_WORKSPACE "build\windows\x64\runner\Release"
           $artifactDir = Join-Path $env:GITHUB_WORKSPACE "dist"
           New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-          $zipPath = Join-Path $artifactDir ("VerdantFlutter_{0}_windows_x64.zip" -f $env:RELEASE_VERSION)
-          if (Test-Path -LiteralPath $zipPath) {
-            Remove-Item -LiteralPath $zipPath -Force
+          $installerPath = Join-Path $artifactDir ("VerdantFlutter_{0}_windows_x64_setup.exe" -f $env:RELEASE_VERSION)
+          if (Test-Path -LiteralPath $installerPath) {
+            Remove-Item -LiteralPath $installerPath -Force
           }
-          Compress-Archive -Path (Join-Path $releaseDir "*") -DestinationPath $zipPath -Force
-          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath
-          "{0}  {1}" -f $hash.Hash.ToLowerInvariant(), (Split-Path -Leaf $zipPath) |
-            Set-Content -Encoding ascii -LiteralPath (Join-Path $artifactDir "SHA256SUMS")
-          "archive=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "checksums=$(Join-Path $artifactDir 'SHA256SUMS')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          .\scripts\create_windows_installer.ps1 -Version $env:RELEASE_VERSION -ReleaseDir $releaseDir -OutputDir $artifactDir
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows installer packaging failed with exit code $LASTEXITCODE."
+          }
+          if (-not (Test-Path -LiteralPath $installerPath)) {
+            throw "Windows installer was not created: $installerPath"
+          }
+          "installer=$installerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Attest Windows archive
+      - name: Sign Windows installer
+        uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
+          files: ${{ steps.package.outputs.installer }}
+          exclude-workload-identity-credential: false
+          trace: false
+
+      - name: Verify Windows installer signature
+        env:
+          RELEASE_INSTALLER: ${{ steps.package.outputs.installer }}
+        shell: pwsh
+        run: |
+          $signature = Get-AuthenticodeSignature -FilePath $env:RELEASE_INSTALLER
+          if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+            throw "Authenticode installer signature verification failed: $($signature.StatusMessage)"
+          }
+          if (-not $signature.SignerCertificate) {
+            throw "Authenticode installer signer certificate is missing."
+          }
+          if (-not $signature.TimeStamperCertificate) {
+            throw "Authenticode installer timestamp countersignature is missing."
+          }
+
+      - name: Write release checksums
+        id: checksums
+        env:
+          RELEASE_INSTALLER: ${{ steps.package.outputs.installer }}
+        shell: pwsh
+        run: |
+          $artifactDir = Split-Path -Parent $env:RELEASE_INSTALLER
+          $checksumsPath = Join-Path $artifactDir "SHA256SUMS"
+          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $env:RELEASE_INSTALLER
+          "{0}  {1}" -f $hash.Hash.ToLowerInvariant(), (Split-Path -Leaf $env:RELEASE_INSTALLER) |
+            Set-Content -Encoding ascii -LiteralPath $checksumsPath
+          "checksums=$checksumsPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Attest Windows installer
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373
         with:
-          subject-path: ${{ steps.package.outputs.archive }}
+          subject-path: ${{ steps.package.outputs.installer }}
 
       - name: Publish GitHub release
         env:
@@ -193,19 +255,19 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           RELEASE_PRERELEASE: ${{ steps.release.outputs.prerelease }}
-          RELEASE_ARCHIVE: ${{ steps.package.outputs.archive }}
-          RELEASE_CHECKSUMS: ${{ steps.package.outputs.checksums }}
+          RELEASE_INSTALLER: ${{ steps.package.outputs.installer }}
+          RELEASE_CHECKSUMS: ${{ steps.checksums.outputs.checksums }}
         shell: pwsh
         run: |
           $notes = @"
           Flutter Windows release $env:RELEASE_VERSION.
 
           Assets:
-          - $(Split-Path -Leaf $env:RELEASE_ARCHIVE)
+          - $(Split-Path -Leaf $env:RELEASE_INSTALLER)
           - SHA256SUMS
 
-          The Windows executable inside the archive is signed with Azure Artifact Signing.
-          Verify the archive checksum and GitHub artifact attestation before installing.
+          The installer and bundled Windows executable are signed with Azure Artifact Signing.
+          Verify the installer checksum and GitHub artifact attestation before installing.
           "@
           $releaseArgs = @()
           if ($env:RELEASE_PRERELEASE -eq "true") {
@@ -215,7 +277,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             throw "Release $env:RELEASE_TAG already exists. Refusing to replace release assets."
           }
-          gh release create $env:RELEASE_TAG $env:RELEASE_ARCHIVE $env:RELEASE_CHECKSUMS `
+          gh release create $env:RELEASE_TAG $env:RELEASE_INSTALLER $env:RELEASE_CHECKSUMS `
             --title "Verdant Flutter $env:RELEASE_VERSION" `
             --notes $notes `
             @releaseArgs

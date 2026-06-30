@@ -61,7 +61,7 @@ owning backend and the native transport layer.
 Public Windows releases are built by GitHub Actions from immutable `v*.*.*`
 tags. The release workflow builds the Flutter client on Windows, signs the
 executable with Azure Artifact Signing through GitHub OIDC, packages a Windows
-x64 archive, writes checksums, and publishes release assets with GitHub
-artifact attestation.
+x64 installer, signs the installer, writes checksums, and publishes release
+assets with GitHub artifact attestation.
 
 Do not move or overwrite release tags after publication.
