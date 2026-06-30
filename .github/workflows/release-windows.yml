@@ -51,7 +51,7 @@ jobs:
           "prerelease=$prerelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Checkout public source
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -130,14 +130,14 @@ jobs:
           .\scripts\flutter_windows.ps1 -Action build -Config release -BuildName $env:RELEASE_VERSION -BuildNumber $buildNumber
 
       - name: Azure login
-        uses: Azure/login@2dd0bbf4064d5a1812889dc200bb8eed2597f82a
+        uses: Azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign Windows executable
-        uses: Azure/artifact-signing-action@c0ae2c1d0c1847ab81ac0ab8521bee597cfedd30
+        uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82
         with:
           endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
           signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
@@ -182,7 +182,7 @@ jobs:
           "checksums=$(Join-Path $artifactDir 'SHA256SUMS')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Attest Windows archive
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be
         with:
           subject-path: ${{ steps.package.outputs.archive }}
 
