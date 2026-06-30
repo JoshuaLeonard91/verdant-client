@@ -119,24 +119,12 @@ jobs:
       - name: Ensure Inno Setup
         shell: pwsh
         run: |
-          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
           $defaultIscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (-not $iscc -and -not (Test-Path -LiteralPath $defaultIscc)) {
-            choco install InnoSetup --version=6.7.1 -y --no-progress
-          }
-          if (Test-Path -LiteralPath $defaultIscc) {
-            $isccPath = $defaultIscc
-          } else {
-            $isccPath = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
-          }
-          if (-not $isccPath) {
+          choco install InnoSetup --version=6.7.1 -y --no-progress --force
+          if (-not (Test-Path -LiteralPath $defaultIscc)) {
             throw "ISCC.exe was not found after installing Inno Setup."
           }
-          $productVersion = (Get-Item -LiteralPath $isccPath).VersionInfo.ProductVersion
-          if ($productVersion -notlike "6.7.1*") {
-            throw "Unexpected Inno Setup version at $isccPath`: $productVersion"
-          }
-          Write-Host "Using Inno Setup compiler $productVersion at $isccPath"
+          Write-Host "Using Inno Setup compiler at $defaultIscc"
 
       - name: Build Flutter Windows release
         env:
