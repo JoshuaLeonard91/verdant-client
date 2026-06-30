@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    groups:
+      pub-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      pub-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:30"
+      timezone: America/New_York
+    open-pull-requests-limit: 3
+    groups:
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      github-actions-version-updates:
+        applies-to: version-updates
+        patterns:
+          - "*"
