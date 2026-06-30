@@ -24,6 +24,7 @@ $PubspecPath = Join-Path $FlutterRoot "pubspec.yaml"
 $ClientVersionPath = Join-Path $FlutterRoot "lib\app\client_version.dart"
 $BumpScript = if ($IsMonorepoLayout) { Join-Path $ClientRoot "scripts\bump-version.ps1" } else { "" }
 $FlutterWindowsScript = Join-Path $FlutterRoot "scripts\flutter_windows.ps1"
+$CreateInstallerScript = Join-Path $FlutterRoot "scripts\create_windows_installer.ps1"
 $DefaultSigningHelper = if ($IsMonorepoLayout -and (Test-Path -LiteralPath (Join-Path $ClientRoot "src-tauri\sign-windows.ps1"))) {
   Join-Path $ClientRoot "src-tauri\sign-windows.ps1"
 } else {
@@ -224,6 +225,7 @@ $releaseDir = Join-Path $FlutterRoot "build\windows\x64\runner\Release"
 $exePath = Join-Path $releaseDir "verdant_flutter.exe"
 
 Require-File $exePath "Flutter Windows release executable"
+Require-File $CreateInstallerScript "Flutter Windows installer helper"
 
 if (-not $SkipSigning) {
   Write-Step "sign" "Signing Flutter Windows executable with the existing Azure Artifact Signing profile."
@@ -246,15 +248,33 @@ if (-not $SkipSigning) {
 
 $artifactDir = Join-Path $FlutterRoot "build\windows\x64\release-artifacts"
 New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
-$zipPath = Join-Path $artifactDir ("VerdantFlutter_{0}_windows_x64.zip" -f $Version)
-if (Test-Path -LiteralPath $zipPath) {
-  Remove-Item -LiteralPath $zipPath -Force
+$installerPath = Join-Path $artifactDir ("VerdantFlutter_{0}_windows_x64_setup.exe" -f $Version)
+if (Test-Path -LiteralPath $installerPath) {
+  Remove-Item -LiteralPath $installerPath -Force
 }
 
-Write-Step "package" "Creating Flutter Windows release archive."
-Compress-Archive -Path (Join-Path $releaseDir "*") -DestinationPath $zipPath -Force
-Require-File $zipPath "Flutter Windows release archive"
+Write-Step "package" "Creating Flutter Windows installer."
+& $CreateInstallerScript -Version $Version -ReleaseDir $releaseDir -OutputDir $artifactDir
+if ($LASTEXITCODE -ne 0) {
+  throw "Flutter Windows installer packaging failed with exit code $LASTEXITCODE."
+}
+Require-File $installerPath "Flutter Windows installer"
+
+if (-not $SkipSigning) {
+  Write-Step "sign" "Signing Flutter Windows installer with the existing Azure Artifact Signing profile."
+  & $ResolvedSigningHelper $installerPath
+  if ($LASTEXITCODE -ne 0) {
+    throw "Flutter installer signing failed with exit code $LASTEXITCODE."
+  }
+
+  if (-not $SkipSignatureVerify) {
+    Assert-AuthenticodeSignature $installerPath "Flutter Windows installer"
+  }
+} elseif (-not $SkipSignatureVerify) {
+  Write-Step "verify" "Skipping signing; verifying any existing Flutter Windows installer signature."
+  Assert-AuthenticodeSignature $installerPath "Flutter Windows installer"
+}
 
 Write-Step "artifacts" "executable=$exePath"
-Write-Step "artifacts" "archive=$zipPath"
+Write-Step "artifacts" "installer=$installerPath"
 Write-Step "done" "Flutter Windows release workflow completed for $Version."
