@@ -34,22 +34,22 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  window_manager: 0.5.1
+  window_manager: 0.5.2
   flutter_secure_storage: ^10.3.1
   shared_preferences: ^2.5.5
   moon_design: ^1.1.0
   file_selector: ^1.1.0
   phosphoricons_flutter: 1.0.0
-  protobuf: ^6.0.0
+  protobuf: ^6.1.0
   web_socket_channel: ^3.0.3
   fixnum: ^1.1.1
-  emoji_picker_flutter: ^4.4.0
+  emoji_picker_flutter: ^4.5.4
   crypto: ^3.0.7
   url_launcher: ^6.3.2
   flutter_inappwebview: 6.1.5
   fl_chart: ^1.2.0
   ffi: ^2.2.0
-  win32: ^6.3.0
+  win32: ^6.4.0
 
 dev_dependencies:
   flutter_test:
@@ -59,7 +59,7 @@ dev_dependencies:
   flutter_driver:
     sdk: flutter
   file_selector_platform_interface: ^2.7.0
-  vm_service: ^15.2.0
+  vm_service: ^15.3.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -67,7 +67,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  protoc_plugin: ^25.0.0
+  protoc_plugin: ^25.1.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
